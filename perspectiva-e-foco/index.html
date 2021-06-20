@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="referrer" content="no-referrer">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+        <title>Transformações de Perspectiva e Foco | lvbarbosa</title>
+<meta property="og:title" content="Transformações de Perspectiva e Foco | lvbarbosa" />
+<meta name="twitter:title" content="Transformações de Perspectiva e Foco | lvbarbosa" />
+
+        
+
+        <meta property="og:site_name" content="lvbarbosa" />
+        <meta property="og:url" content="https:&#x2F;&#x2F;lvbarbosa.github.io" />
+
+        
+
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;base.css" />
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro&display=swap" rel="stylesheet">
+        <link href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;fontawesome&#x2F;fontawesome.css" rel="stylesheet">
+        <link href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;fontawesome&#x2F;brands.css" rel="stylesheet">
+        <link href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;fontawesome&#x2F;solid.css" rel="stylesheet">
+
+        <link rel='icon' type='image/x-icon' href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;favicon.ico" />
+
+        
+
+        
+
+    </head>
+    <body>
+        <a href="#main" class="skip-link p-screen-reader-text">Skip to content</a>
+        <header class="l-header">
+            <h1 class="c-title p-title"><a href="https:&#x2F;&#x2F;lvbarbosa.github.io" class="p-title__link">lvbarbosa</a></h1>
+            <p class="p-subtitle">
+                Ensaios sobre software
+            </p>
+            </header>
+
+        <main id="main" class="l-main">
+            
+<article class="p-article">
+    <header>
+        <h1>Transformações de Perspectiva e Foco
+</h1>
+        <div>
+            <div class="c-time">
+
+                <time datetime="2021-06-20">
+                    2021-06-20
+                </time>
+                
+                 - (6 min read)
+            </div>
+        </div>
+    </header>
+    
+    <section id="js-article" class="p-article__body">
+        <p>Duas das partes fundamentais que definem uma função são seu <strong>domínio</strong> e
+<strong>codomínio</strong>. Cada função faz uma espécie de transformação, recebendo como
+entrada um habitante do domínio e emanando como saída um habitante do codomínio.
+O domínio e o codomínio de uma função podem ser iguais. Uma &quot;ponta&quot; da função é
+o domínio, a outra o codomínio.</p>
+<p><img src="/images/pre_post_composition_1.png" alt="" /></p>
+<p>Em programação, domínio e codomínio podem ser os tipos da linguagem. As funções
+podem ser os membros de uma classe, ou as funções em um módulo ou <em>namespace</em>.</p>
+<p><img src="/images/pre_post_composition_2.png" alt="" /></p>
+<p>Um <em>insight</em> comum é perceber que quando duas funções tem um par de &quot;pontas
+opostas&quot; igual, podemos &quot;colar&quot; uma função na outra, construíndo uma nova função
+onde a saída da primeira é utilizada como entrada da segunda. Ou seja, duas
+funções <code>f</code> e <code>g</code> podem ser &quot;grudadas&quot; uma na outra quando pelo menos uma destas
+duas alternativas é verdadeira:</p>
+<ul>
+<li>O codomínio de <code>g</code> é igual ao domínio de <code>f</code></li>
+<li>O codomínio de <code>f</code> é igual ao domínio de <code>g</code></li>
+</ul>
+<p>Essa é uma forma intuitiva de entender o conceito de <strong>composição</strong> de funções.</p>
+<p>Por exemplo: imagine uma função chamada <code>to_float</code> que recebe um <code>int</code> e retorna
+um <code>float</code>. O <strong>domínio</strong> dessa função é <code>int</code>; o codomínio <code>float</code>.</p>
+<p><img src="/images/pre_post_composition_3.png" alt="" /></p>
+<p>Agora, imagine uma outra função chamada <code>to_string</code>, que recebe um <code>float</code> e
+volta uma <code>string</code> que representa textualmente o <code>float</code> disponibilizado como
+entrada.</p>
+<p>Apenas utilizando essas duas funções, somos capazes de criar uma nova função
+<code>to_float_string</code>, que recebe um <code>int</code> como entrada e volta uma <code>string</code>
+representando textualmente aquele <code>int</code> dado como entrada, mas em forma de ponto
+flutuante. Por exemplo, dado o número <code>1</code> como entrada, essa nova função retorna
+a string <code>&quot;1.0&quot;</code>.</p>
+<p><img src="/images/pre_post_composition_4.png" alt="" /></p>
+<p>Em Rust, por exemplo, essa função poderia ser definida assim:</p>
+<pre style="background-color:#ffffff;">
+<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn to_float(n: i32) -&gt; f32 { ... }
+fn to_string(n: f32) -&gt; String { ... }
+
+fn to_float_string(n: i32) -&gt; String {
+  to_string(to_float(n))
+}
+</span></code></pre>
+<p>Repare que a saída de <code>to_float</code> encaixa perfeitamente na entrada de
+<code>to_string</code>.</p>
+<p>Em Haskell, por exemplo, composição de funções é algo considerado tão
+fundamental que existe um operador de infixo que faz exatamente isso, o ponto:</p>
+<blockquote>
+<p>Um rápido desvio, Haskell 101: em Haskell, expressamos tipos de funções
+utilizando flechas. <code>a -&gt; b</code> significa &quot;uma função de um tipo <code>a</code> qualquer
+para um tipo <code>b</code> qualquer&quot;.</p>
+</blockquote>
+<blockquote>
+<p>Quando queremos expressar o tipo de um símbolo, utilizamos <code>::</code>. Por exemplo,
+<code>a :: Int</code> significa &quot;o símbolo <code>a</code> tem o tipo <code>Int</code>.&quot;</p>
+</blockquote>
+<blockquote>
+<p>Operadores de infixo como <code>+</code> e <code>.</code> são envoltos em parêntesis quando
+apresentados fora de contexto, sem estarem sendo aplicados a seus dois
+argumentos.</p>
+</blockquote>
+<pre style="background-color:#ffffff;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">(.) :: (b -&gt; c) -&gt; (a -&gt; b) -&gt; (a -&gt; c)
+</span></code></pre>
+<p>O que a assinatura do operador de composição <code>(.)</code> nos diz é: dada uma função de
+um tipo qualquer <code>b</code> para um tipo qualquer <code>c</code>, e dada outra função de um tipo
+qualquer <code>a</code> para um tipo qualquer <code>b</code> (que deve ser o mesmo <code>b</code> codomínio da
+primeira função), uma nova função de tipo <code>a -&gt; c</code> é retornada.</p>
+<p>Portanto, dadas as funções <code>to_string</code> e <code>to_float</code>, a função <code>to_float_string</code>
+em Haskell poderia ser definida como:</p>
+<pre style="background-color:#ffffff;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">to_float :: Int -&gt; Float
+to_float = ...
+
+to_string :: Float -&gt; String
+to_string = ...
+
+to_float_string :: Int -&gt; String
+to_float_string = to_string . to_float
+</span></code></pre>
+<p>Perceba como o operador <code>(.)</code> é utilizado. Ele une duas funções, como o operador
+<code>(+)</code> une dois números.</p>
+<p>Claro, de forma muito parecida como fizemos em Rust, também podemos definir
+<code>to_float_string</code> em Haskell sem utilizar composição explicitamente:</p>
+<pre style="background-color:#ffffff;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">to_float_string :: Int -&gt; String
+to_float_string x = to_string (to_float x)
+</span></code></pre>
+<p>Se você já programa há algum tempo, há grandes chances de que tudo que escrevi
+até aqui é óbvio. O que eu quero apresentar agora é um novo ponto de vista para
+essa mesma ideia. Não há nenhuma novidade aqui, só um par de olhos diferentes do
+que estamos acostumados.</p>
+<p>Eu demorei para entender que eu estava &quot;viciado&quot; em pensar em termos de domínio
+e codomínio. Entrada e saída. Perspectiva e foco. Funções para mim eram apenas
+formas de transmutar os objetos. E se as funções também pudessem ser
+transformadas?</p>
+<p>Vamos manter o exemplo da função <code>to_string</code>, que mapeia um <code>float</code> para uma
+<code>string</code>. Com essa função, <strong>podemos transformar absolutamente qualquer função
+que tem <code>float</code> como codomínio ou uma <code>string</code> como domínio</strong>. Podemos
+transformar esse <code>float</code> na assinatura de tais funções em <code>string</code>.</p>
+<p><img src="/images/pre_post_composition_5.png" alt="" />
+<img src="/images/pre_post_composition_6.png" alt="" /></p>
+<p>Em Rust, por exemplo, podemos fazer a transformação de domínio da seguinte
+forma:</p>
+<pre style="background-color:#ffffff;">
+<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn to_string(n: f32) -&gt; String { ... }
+
+fn domain_transform&lt;A&gt;(f: impl Fn(A) -&gt; f32) -&gt; impl Fn(A) -&gt; String {
+    move |a| to_string(f(a))
+}
+</span></code></pre>
+<p>Nessa função, o argumento <code>f</code>, que é uma função qualquer que recebe um argumento
+do tipo <code>A</code> (genérico) e volta um <code>f32</code>, é transformado em uma outra função, que
+faz exatamente a mesma coisa que <code>f</code>, mas retorna o resultado em representação
+textual, como <code>String</code>. <code>f</code> é a função que está sendo transformada.</p>
+<p>A transformação de codomínio acontece de forma similar:</p>
+<pre style="background-color:#ffffff;">
+<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn codomain_transform&lt;A&gt;(f: impl Fn(String) -&gt; A) -&gt; impl Fn(f32) -&gt; A {
+    move |s| f(to_string(s))
+}
+</span></code></pre>
+<p>Consegue perceber a simetria das duas implementações? Em uma, fazemos
+<code>f(to_string(...))</code>. Na outra, fazemos <code>to_string(f(...))</code>. A transformação de
+domínio de uma função é efetuada com pós-composição. A de codomínio com
+pré-composição. Pré e pós no sentido de &quot;a função transformadora é chamada em
+primeiro (pré-composição) ou segundo (pós-composição) lugar&quot;.</p>
+<p>Em Haskell, podemos expressar essas ideias usando aplicação parcial do operador
+de composição que vimos anteriormente.</p>
+<blockquote>
+<p>Outro rápido desvio: aplicação parcial é quando a gente chama uma função com
+menos argumentos do que ela espera. O resultado é uma outra função que recebe
+os argumentos da primeira função que faltaram e chama a primeira função com
+todos os argumentos esperados.</p>
+</blockquote>
+<pre style="background-color:#ffffff;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">domain_transform :: (a -&gt; Float) -&gt; (a -&gt; String)
+domain_transform = (to_string .)
+
+codomain_transform :: (String -&gt; a) -&gt; (Float -&gt; a)
+codomain_transform = (. to_string)
+</span></code></pre>
+<p>Finalmente, um ponto para pensar quando não tiver nada melhor para fazer: e se
+ao invés de <code>to_string</code>, usássemos uma função tão desconhecida como a que
+estamos transformando? Claro, com a restrição apresentada lá no começo do post:</p>
+<ul>
+<li>O codomínio de <code>g</code> é igual ao domínio de <code>f</code></li>
+<li>O codomínio de <code>f</code> é igual ao domínio de <code>g</code></li>
+</ul>
+
+    </section>
+    <footer>
+        <nav class="c-pagination p-pagination">
+            <div class="c-pagination__ctrl">
+                <div class="c-pagination__newer">
+                    
+                </div>
+                <div class="c-pagination__older">
+                    
+                </div>
+            </div>
+        </nav>
+    </footer>
+</article>
+        </main>
+
+     
+      <footer class="l-footer">
+          <p class="p-copyright">
+              
+              Copyright Lucas Barbosa 2021
+          </p>
+      </footer>
+
+       
+      
+    </body>
+</html>
+            
