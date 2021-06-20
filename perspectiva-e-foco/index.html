@@ -54,7 +54,7 @@
                     2021-06-20
                 </time>
                 
-                 - (6 min read)
+                 - (5 min read)
             </div>
         </div>
     </header>
@@ -155,34 +155,34 @@ formas de transmutar os objetos. E se as funções também pudessem ser
 transformadas?</p>
 <p>Vamos manter o exemplo da função <code>to_string</code>, que mapeia um <code>float</code> para uma
 <code>string</code>. Com essa função, <strong>podemos transformar absolutamente qualquer função
-que tem <code>float</code> como codomínio ou uma <code>string</code> como domínio</strong>. Podemos
-transformar esse <code>float</code> na assinatura de tais funções em <code>string</code>.</p>
+que tem <code>float</code> como codomínio ou uma <code>string</code> como domínio</strong>.</p>
 <p><img src="/images/pre_post_composition_5.png" alt="" />
 <img src="/images/pre_post_composition_6.png" alt="" /></p>
-<p>Em Rust, por exemplo, podemos fazer a transformação de domínio da seguinte
+<p>Em Rust, por exemplo, podemos fazer a transformação de codomínio da seguinte
 forma:</p>
 <pre style="background-color:#ffffff;">
 <code class="language-rust" data-lang="rust"><span style="color:#202020;">fn to_string(n: f32) -&gt; String { ... }
 
-fn domain_transform&lt;A&gt;(f: impl Fn(A) -&gt; f32) -&gt; impl Fn(A) -&gt; String {
+fn codomain_transform&lt;A&gt;(f: impl Fn(A) -&gt; f32) -&gt; impl Fn(A) -&gt; String {
     move |a| to_string(f(a))
 }
 </span></code></pre>
-<p>Nessa função, o argumento <code>f</code>, que é uma função qualquer que recebe um argumento
-do tipo <code>A</code> (genérico) e volta um <code>f32</code>, é transformado em uma outra função, que
-faz exatamente a mesma coisa que <code>f</code>, mas retorna o resultado em representação
-textual, como <code>String</code>. <code>f</code> é a função que está sendo transformada.</p>
-<p>A transformação de codomínio acontece de forma similar:</p>
+<p>Nessa função, o argumento <code>f</code>, que é uma função qualquer que recebe (domínio) um
+argumento do tipo <code>A</code> (genérico) e volta (codomínio) um <code>f32</code>, é transformado em
+uma outra função, que faz exatamente a mesma coisa que <code>f</code>, mas retorna
+(codomínio) o resultado em representação textual, como <code>String</code>. <code>f</code> é a função
+que está sendo transformada.</p>
+<p>A transformação de domínio acontece de forma similar:</p>
 <pre style="background-color:#ffffff;">
-<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn codomain_transform&lt;A&gt;(f: impl Fn(String) -&gt; A) -&gt; impl Fn(f32) -&gt; A {
+<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn domain_transform&lt;A&gt;(f: impl Fn(String) -&gt; A) -&gt; impl Fn(f32) -&gt; A {
     move |s| f(to_string(s))
 }
 </span></code></pre>
 <p>Consegue perceber a simetria das duas implementações? Em uma, fazemos
 <code>f(to_string(...))</code>. Na outra, fazemos <code>to_string(f(...))</code>. A transformação de
-domínio de uma função é efetuada com pós-composição. A de codomínio com
-pré-composição. Pré e pós no sentido de &quot;a função transformadora é chamada em
-primeiro (pré-composição) ou segundo (pós-composição) lugar&quot;.</p>
+domínio de uma função é efetuada com pré-composição. A de codomínio com
+pós-composição. Pré e pós no sentido de &quot;a função transformada é chamada em
+primeiro (pós-composição) ou segundo (pré-composição) lugar&quot;.</p>
 <p>Em Haskell, podemos expressar essas ideias usando aplicação parcial do operador
 de composição que vimos anteriormente.</p>
 <blockquote>
@@ -192,11 +192,11 @@ os argumentos da primeira função que faltaram e chama a primeira função com
 todos os argumentos esperados.</p>
 </blockquote>
 <pre style="background-color:#ffffff;">
-<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">domain_transform :: (a -&gt; Float) -&gt; (a -&gt; String)
-domain_transform = (to_string .)
+<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">codomain_transform :: (a -&gt; Float) -&gt; (a -&gt; String)
+codomain_transform = (to_string .)
 
-codomain_transform :: (String -&gt; a) -&gt; (Float -&gt; a)
-codomain_transform = (. to_string)
+domain_transform :: (String -&gt; a) -&gt; (Float -&gt; a)
+domain_transform = (. to_string)
 </span></code></pre>
 <p>Finalmente, um ponto para pensar quando não tiver nada melhor para fazer: e se
 ao invés de <code>to_string</code>, usássemos uma função tão desconhecida como a que
