@@ -54,7 +54,7 @@
                     2021-06-20
                 </time>
                 
-                 - (5 min read)
+                 - (6 min read)
             </div>
         </div>
     </header>
@@ -63,12 +63,12 @@
         <p>Duas das partes fundamentais que definem uma função são seu <strong>domínio</strong> e
 <strong>codomínio</strong>. Cada função faz uma espécie de transformação, recebendo como
 entrada um habitante do domínio e emanando como saída um habitante do codomínio.
-O domínio e o codomínio de uma função podem ser iguais. Uma &quot;ponta&quot; da função é
-o domínio, a outra o codomínio.</p>
+O domínio e o codomínio de uma função podem ser iguais. Uma &quot;ponta&quot;
+(extremidade) da função é o domínio, a outra o codomínio.</p>
 <p><img src="/images/pre_post_composition_1.png" alt="" /></p>
 <p>Em programação, domínio e codomínio podem ser os tipos da linguagem. As funções
-podem ser os membros de uma classe, ou as funções em um módulo ou <em>namespace</em>.</p>
-<p><img src="/images/pre_post_composition_2.png" alt="" /></p>
+podem ser os membros de uma classe, ou as funções em um módulo ou <em>namespace</em>. O
+domínio é o argumento; o codomínio, o retorno.</p>
 <p>Um <em>insight</em> comum é perceber que quando duas funções tem um par de &quot;pontas
 opostas&quot; igual, podemos &quot;colar&quot; uma função na outra, construíndo uma nova função
 onde a saída da primeira é utilizada como entrada da segunda. Ou seja, duas
@@ -80,11 +80,12 @@ duas alternativas é verdadeira:</p>
 </ul>
 <p>Essa é uma forma intuitiva de entender o conceito de <strong>composição</strong> de funções.</p>
 <p>Por exemplo: imagine uma função chamada <code>to_float</code> que recebe um <code>int</code> e retorna
-um <code>float</code>. O <strong>domínio</strong> dessa função é <code>int</code>; o codomínio <code>float</code>.</p>
-<p><img src="/images/pre_post_composition_3.png" alt="" /></p>
+um <code>float</code>. O domínio dessa função é <code>int</code>; o codomínio, <code>float</code>.</p>
+<p><img src="/images/pre_post_composition_2.png" alt="" /></p>
 <p>Agora, imagine uma outra função chamada <code>to_string</code>, que recebe um <code>float</code> e
 volta uma <code>string</code> que representa textualmente o <code>float</code> disponibilizado como
 entrada.</p>
+<p><img src="/images/pre_post_composition_3.png" alt="" /></p>
 <p>Apenas utilizando essas duas funções, somos capazes de criar uma nova função
 <code>to_float_string</code>, que recebe um <code>int</code> como entrada e volta uma <code>string</code>
 representando textualmente aquele <code>int</code> dado como entrada, mas em forma de ponto
@@ -92,12 +93,12 @@ flutuante. Por exemplo, dado o número <code>1</code> como entrada, essa nova fu
 a string <code>&quot;1.0&quot;</code>.</p>
 <p><img src="/images/pre_post_composition_4.png" alt="" /></p>
 <p>Em Rust, por exemplo, essa função poderia ser definida assim:</p>
-<pre style="background-color:#ffffff;">
-<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn to_float(n: i32) -&gt; f32 { ... }
-fn to_string(n: f32) -&gt; String { ... }
+<pre style="background-color:#fafafa;">
+<code class="language-rust" data-lang="rust"><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">to_float</span><span style="color:#383a42;">(</span><span style="color:#e45649;">n</span><span style="color:#383a42;">: </span><span style="color:#a626a4;">i32</span><span style="color:#383a42;">) -&gt; </span><span style="color:#a626a4;">f32 </span><span style="color:#383a42;">{ </span><span style="color:#a626a4;">... </span><span style="color:#383a42;">}
+</span><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">to_string</span><span style="color:#383a42;">(</span><span style="color:#e45649;">n</span><span style="color:#383a42;">: </span><span style="color:#a626a4;">f32</span><span style="color:#383a42;">) -&gt; String { </span><span style="color:#a626a4;">... </span><span style="color:#383a42;">}
 
-fn to_float_string(n: i32) -&gt; String {
-  to_string(to_float(n))
+</span><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">to_float_string</span><span style="color:#383a42;">(</span><span style="color:#e45649;">n</span><span style="color:#383a42;">: </span><span style="color:#a626a4;">i32</span><span style="color:#383a42;">) -&gt; String {
+  </span><span style="color:#0184bc;">to_string</span><span style="color:#383a42;">(</span><span style="color:#0184bc;">to_float</span><span style="color:#383a42;">(n))
 }
 </span></code></pre>
 <p>Repare que a saída de <code>to_float</code> encaixa perfeitamente na entrada de
@@ -105,9 +106,9 @@ fn to_float_string(n: i32) -&gt; String {
 <p>Em Haskell, por exemplo, composição de funções é algo considerado tão
 fundamental que existe um operador de infixo que faz exatamente isso, o ponto:</p>
 <blockquote>
-<p>Um rápido desvio, Haskell 101: em Haskell, expressamos tipos de funções
-utilizando flechas. <code>a -&gt; b</code> significa &quot;uma função de um tipo <code>a</code> qualquer
-para um tipo <code>b</code> qualquer&quot;.</p>
+<p>Contexto: em Haskell, expressamos tipos de funções utilizando flechas.
+<code>a -&gt; b</code> significa &quot;uma função de um tipo <code>a</code> qualquer para um tipo <code>b</code>
+qualquer&quot;.</p>
 </blockquote>
 <blockquote>
 <p>Quando queremos expressar o tipo de um símbolo, utilizamos <code>::</code>. Por exemplo,
@@ -118,53 +119,63 @@ para um tipo <code>b</code> qualquer&quot;.</p>
 apresentados fora de contexto, sem estarem sendo aplicados a seus dois
 argumentos.</p>
 </blockquote>
-<pre style="background-color:#ffffff;">
-<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">(.) :: (b -&gt; c) -&gt; (a -&gt; b) -&gt; (a -&gt; c)
+<pre style="background-color:#fafafa;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#0184bc;">(.) </span><span style="color:#a626a4;">::</span><span style="color:#383a42;"> (</span><span style="color:#e45649;">b </span><span style="color:#a626a4;">-&gt; </span><span style="color:#e45649;">c</span><span style="color:#383a42;">) </span><span style="color:#a626a4;">-&gt;</span><span style="color:#383a42;"> (</span><span style="color:#e45649;">a </span><span style="color:#a626a4;">-&gt; </span><span style="color:#e45649;">b</span><span style="color:#383a42;">) </span><span style="color:#a626a4;">-&gt;</span><span style="color:#383a42;"> (</span><span style="color:#e45649;">a </span><span style="color:#a626a4;">-&gt; </span><span style="color:#e45649;">c</span><span style="color:#383a42;">)
 </span></code></pre>
 <p>O que a assinatura do operador de composição <code>(.)</code> nos diz é: dada uma função de
 um tipo qualquer <code>b</code> para um tipo qualquer <code>c</code>, e dada outra função de um tipo
-qualquer <code>a</code> para um tipo qualquer <code>b</code> (que deve ser o mesmo <code>b</code> codomínio da
-primeira função), uma nova função de tipo <code>a -&gt; c</code> é retornada.</p>
+qualquer <code>a</code> para um tipo qualquer <code>b</code> (que deve ser o mesmo <code>b</code> que é domínio
+da primeira função), uma nova função de tipo <code>a -&gt; c</code> é retornada.</p>
 <p>Portanto, dadas as funções <code>to_string</code> e <code>to_float</code>, a função <code>to_float_string</code>
 em Haskell poderia ser definida como:</p>
-<pre style="background-color:#ffffff;">
-<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">to_float :: Int -&gt; Float
-to_float = ...
+<pre style="background-color:#fafafa;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#0184bc;">to_float </span><span style="color:#a626a4;">:: Int -&gt; Float
+</span><span style="color:#383a42;">to_float </span><span style="color:#a626a4;">= ...
 
-to_string :: Float -&gt; String
-to_string = ...
+</span><span style="color:#0184bc;">to_string </span><span style="color:#a626a4;">:: Float -&gt; String
+</span><span style="color:#383a42;">to_string </span><span style="color:#a626a4;">= ...
 
-to_float_string :: Int -&gt; String
-to_float_string = to_string . to_float
+</span><span style="color:#0184bc;">to_float_string </span><span style="color:#a626a4;">:: Int -&gt; String
+</span><span style="color:#383a42;">to_float_string </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> to_string </span><span style="color:#a626a4;">.</span><span style="color:#383a42;"> to_float
 </span></code></pre>
 <p>Perceba como o operador <code>(.)</code> é utilizado. Ele une duas funções, como o operador
 <code>(+)</code> une dois números.</p>
 <p>Claro, de forma muito parecida como fizemos em Rust, também podemos definir
-<code>to_float_string</code> em Haskell sem utilizar composição explicitamente:</p>
-<pre style="background-color:#ffffff;">
-<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">to_float_string :: Int -&gt; String
-to_float_string x = to_string (to_float x)
+<code>to_float_string</code> em Haskell sem utilizar o operador de composição (o que não
+desfaz o fato de que isso é composição):</p>
+<pre style="background-color:#fafafa;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#0184bc;">to_float_string </span><span style="color:#a626a4;">:: Int -&gt; String
+</span><span style="color:#383a42;">to_float_string x </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> to_string (to_float x)
 </span></code></pre>
 <p>Se você já programa há algum tempo, há grandes chances de que tudo que escrevi
-até aqui é óbvio. O que eu quero apresentar agora é um novo ponto de vista para
-essa mesma ideia. Não há nenhuma novidade aqui, só um par de olhos diferentes do
-que estamos acostumados.</p>
-<p>Eu demorei para entender que eu estava &quot;viciado&quot; em pensar em termos de domínio
-e codomínio. Entrada e saída. Perspectiva e foco. Funções para mim eram apenas
-formas de transmutar os objetos. E se as funções também pudessem ser
-transformadas?</p>
+até aqui é, talvez, óbvio. O que eu quero apresentar agora é um novo ponto de
+vista para essa mesma ideia. Não há nenhuma novidade aqui, só mais uma
+perspectiva para enriquecer nossa percepção.</p>
+<p>Muitas vezes ficamos enviesados em pensar em termos de domínio e codomínio.
+Argumento e retorno. Entrada e saída. Perspectiva e foco. Funções parecem apenas
+formas de transmutar os objetos. Contudo, funções também podem ser
+transformadas. Elas também podem ser domínio e codomínio de outras funções.</p>
 <p>Vamos manter o exemplo da função <code>to_string</code>, que mapeia um <code>float</code> para uma
-<code>string</code>. Com essa função, <strong>podemos transformar absolutamente qualquer função
-que tem <code>float</code> como codomínio ou uma <code>string</code> como domínio</strong>.</p>
-<p><img src="/images/pre_post_composition_5.png" alt="" />
+<code>string</code>. Com essa função, podemos transformar:</p>
+<ul>
+<li>
+<p>toda função <code>f</code> de tipo <code>a -&gt; float</code> em uma função <code>f'</code> do tipo <code>a -&gt; string</code>
+<img src="/Images/pre_post_composition_5.png" alt="" /></p>
+</li>
+<li>
+<p>toda função <code>f</code> de tipo <code>string -&gt; a</code> em uma função <code>f'</code> do tipo <code>float -&gt; a</code>
 <img src="/images/pre_post_composition_6.png" alt="" /></p>
+</li>
+</ul>
+<p>Perceba que não precisamos saber nada sobre o tipo <code>a</code>. Essa ideia de ignorância
+deliberada a respeito de tipos geralmente é expressa através de <em>generics</em>.</p>
 <p>Em Rust, por exemplo, podemos fazer a transformação de codomínio da seguinte
 forma:</p>
-<pre style="background-color:#ffffff;">
-<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn to_string(n: f32) -&gt; String { ... }
+<pre style="background-color:#fafafa;">
+<code class="language-rust" data-lang="rust"><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">to_string</span><span style="color:#383a42;">(</span><span style="color:#e45649;">n</span><span style="color:#383a42;">: </span><span style="color:#a626a4;">f32</span><span style="color:#383a42;">) -&gt; String { </span><span style="color:#a626a4;">... </span><span style="color:#383a42;">}
 
-fn codomain_transform&lt;A&gt;(f: impl Fn(A) -&gt; f32) -&gt; impl Fn(A) -&gt; String {
-    move |a: A| to_string(f(a))
+</span><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">codomain_transform</span><span style="color:#383a42;">&lt;A&gt;(</span><span style="color:#e45649;">f</span><span style="color:#383a42;">: impl Fn(</span><span style="color:#e45649;">A</span><span style="color:#383a42;">) -&gt; </span><span style="color:#a626a4;">f32</span><span style="color:#383a42;">) -&gt; impl Fn(A) -&gt; String {
+    </span><span style="color:#a626a4;">move |</span><span style="color:#383a42;">a: A</span><span style="color:#a626a4;">| </span><span style="color:#0184bc;">to_string</span><span style="color:#383a42;">(</span><span style="color:#0184bc;">f</span><span style="color:#383a42;">(a))
 }
 </span></code></pre>
 <p>Nessa função, o argumento <code>f</code>, que é uma função qualquer que recebe (domínio) um
@@ -173,38 +184,42 @@ uma outra função, que faz exatamente a mesma coisa que <code>f</code>, mas ret
 (codomínio) o resultado em representação textual, como <code>String</code>. <code>f</code> é a função
 que está sendo transformada.</p>
 <p>A transformação de domínio acontece de forma similar:</p>
-<pre style="background-color:#ffffff;">
-<code class="language-rust" data-lang="rust"><span style="color:#202020;">fn domain_transform&lt;A&gt;(f: impl Fn(String) -&gt; A) -&gt; impl Fn(f32) -&gt; A {
-    move |x: f32| f(to_string(x))
+<pre style="background-color:#fafafa;">
+<code class="language-rust" data-lang="rust"><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">domain_transform</span><span style="color:#383a42;">&lt;A&gt;(</span><span style="color:#e45649;">f</span><span style="color:#383a42;">: impl Fn(</span><span style="color:#e45649;">String</span><span style="color:#383a42;">) -&gt; A) -&gt; impl Fn(</span><span style="color:#a626a4;">f32</span><span style="color:#383a42;">) -&gt; A {
+    </span><span style="color:#a626a4;">move |</span><span style="color:#383a42;">x: </span><span style="color:#a626a4;">f32| </span><span style="color:#0184bc;">f</span><span style="color:#383a42;">(</span><span style="color:#0184bc;">to_string</span><span style="color:#383a42;">(x))
 }
 </span></code></pre>
 <p>Consegue perceber a simetria das duas implementações? Em uma, fazemos
-<code>f(to_string(...))</code>. Na outra, fazemos <code>to_string(f(...))</code>. A transformação de
-domínio de uma função é efetuada com pré-composição. A de codomínio com
-pós-composição. Pré e pós no sentido de &quot;a função transformada é chamada em
-primeiro (pós-composição) ou segundo (pré-composição) lugar&quot;.</p>
+<code>f(to_string(...))</code>. Na outra, fazemos <code>to_string(f(...))</code>. </p>
 <p>Em Haskell, podemos expressar essas ideias usando aplicação parcial do operador
 de composição que vimos anteriormente.</p>
 <blockquote>
-<p>Outro rápido desvio: aplicação parcial é quando a gente chama uma função com
+<p>Contexto: aplicação parcial é quando a gente chama uma função com
 menos argumentos do que ela espera. O resultado é uma outra função que recebe
 os argumentos da primeira função que faltaram e chama a primeira função com
 todos os argumentos esperados.</p>
 </blockquote>
-<pre style="background-color:#ffffff;">
-<code class="language-haskell" data-lang="haskell"><span style="color:#202020;">codomain_transform :: (a -&gt; Float) -&gt; (a -&gt; String)
-codomain_transform = (to_string .)
+<pre style="background-color:#fafafa;">
+<code class="language-haskell" data-lang="haskell"><span style="color:#0184bc;">codomain_transform </span><span style="color:#a626a4;">::</span><span style="color:#383a42;"> (</span><span style="color:#e45649;">a </span><span style="color:#a626a4;">-&gt; Float</span><span style="color:#383a42;">) </span><span style="color:#a626a4;">-&gt;</span><span style="color:#383a42;"> (</span><span style="color:#e45649;">a </span><span style="color:#a626a4;">-&gt; String</span><span style="color:#383a42;">)
+codomain_transform </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> (to_string </span><span style="color:#a626a4;">.</span><span style="color:#383a42;">)
 
-domain_transform :: (String -&gt; a) -&gt; (Float -&gt; a)
-domain_transform = (. to_string)
+</span><span style="color:#0184bc;">domain_transform </span><span style="color:#a626a4;">::</span><span style="color:#383a42;"> (</span><span style="color:#a626a4;">String -&gt; </span><span style="color:#e45649;">a</span><span style="color:#383a42;">) </span><span style="color:#a626a4;">-&gt;</span><span style="color:#383a42;"> (</span><span style="color:#a626a4;">Float -&gt; </span><span style="color:#e45649;">a</span><span style="color:#383a42;">)
+domain_transform </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> (</span><span style="color:#a626a4;">.</span><span style="color:#383a42;"> to_string)
 </span></code></pre>
-<p>Finalmente, um ponto para pensar quando não tiver nada melhor para fazer: e se
-ao invés de <code>to_string</code>, usássemos uma função tão desconhecida como a que
-estamos transformando? Claro, com a restrição apresentada lá no começo do post:</p>
-<ul>
-<li>O codomínio de <code>g</code> é igual ao domínio de <code>f</code></li>
-<li>O codomínio de <code>f</code> é igual ao domínio de <code>g</code></li>
-</ul>
+<p>Esse tipo de abstração se manifesta de muitas formas no nosso dia a dia. Em
+aplicações web, por exemplo, é assim que são feitos <em>middlewares</em> (também
+conhecidos como <em>interceptors</em>). Padrões de projeto como o <em>decorator</em> também
+são uma forma de manifestação dessa ideia.</p>
+<p>Se você apertar os olhos e olhar com bastante atenção, vai perceber que, no
+final das contas, todo <em>software</em> que você escreve é basicamente isso. A
+linguagem de programação te oferece funções primitivas para que você organize
+algumas delas de uma forma particular, fazendo com que o computador se comporte
+de uma certa maneira. Seus programas são grandes funções cujas entradas
+(mensagens, chamadas HTTP, <em>inputs</em> do usuário, etc.) pertencem ao domínio, e as
+saídas (alterar o estado do banco de dados, fazer uma chamada HTTP, enviar um
+<em>email</em>, etc) pertencem ao codomínio.</p>
+<p>Se programas são funções, e funções podem ser compostas, logo... :) até a
+próxima.</p>
 
     </section>
     <footer>
