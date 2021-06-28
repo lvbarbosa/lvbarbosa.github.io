@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="referrer" content="no-referrer">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+        <title>[Rust] Monitorando Futures | lvbarbosa</title>
+<meta property="og:title" content="[Rust] Monitorando Futures | lvbarbosa" />
+<meta name="twitter:title" content="[Rust] Monitorando Futures | lvbarbosa" />
+
+        
+
+        <meta property="og:site_name" content="lvbarbosa" />
+        <meta property="og:url" content="https:&#x2F;&#x2F;lvbarbosa.github.io" />
+
+        
+
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;base.css" />
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro&display=swap" rel="stylesheet">
+        <link href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;fontawesome&#x2F;fontawesome.css" rel="stylesheet">
+        <link href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;fontawesome&#x2F;brands.css" rel="stylesheet">
+        <link href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;fontawesome&#x2F;solid.css" rel="stylesheet">
+
+        <link rel='icon' type='image/x-icon' href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;favicon.ico" />
+
+        
+
+        
+
+    </head>
+    <body>
+        <a href="#main" class="skip-link p-screen-reader-text">Skip to content</a>
+        <header class="l-header">
+            <h1 class="c-title p-title"><a href="https:&#x2F;&#x2F;lvbarbosa.github.io" class="p-title__link">lvbarbosa</a></h1>
+            <p class="p-subtitle">
+                Ensaios sobre software
+            </p>
+            </header>
+
+        <main id="main" class="l-main">
+            
+<article class="p-article">
+    <header>
+        <h1>[Rust] Monitorando Futures
+</h1>
+        <div>
+            <div class="c-time">
+
+                <time datetime="2021-06-27">
+                    2021-06-27
+                </time>
+                
+                 - (8 min read)
+            </div>
+        </div>
+    </header>
+    
+    <section id="js-article" class="p-article__body">
+        <p>Esses dias precisei resolver o seguinte problema: monitorar os consumidores de
+filas da nossa ferramenta de messageria para garantir que eles estão de fato
+consumindo mensagens. Isso de dentro do próprio serviço. Em Rust.</p>
+<p>Estamos num contexto assíncrono. Os consumidores são modelados como <code>Future</code>s. A
+ideia é ficar fazendo <em>polling</em> nos consumidores infinitamente, e que eles nunca
+retornem nem abortem com um <code>panic!</code>. Caso isso aconteça por algum motivo, eles
+devem ser reiniciados e um alarme deve ser acionado por se tratar de uma
+situação atípica.</p>
+<p>A ideia é que cada <em>microservice</em> declare seus consumidores e delegue para a
+biblioteca cliente do serviço de messageria o trabalho de mantê-los vivos.</p>
+<p>Escrevi uma solução e achei que seria legal compartilha-la. Vou mostrar uma
+versão simplificada do código que escrevi. Essa versão ignora o retorno dos
+consumidores e não é imune a <em>panics</em>. No final do texto compartilho formas de
+lidar com esses problemas.</p>
+<p>Essa não é nenhum tipo de solução canônica.</p>
+<h2 id="select-all">select_all<a class="zola-anchor" href="#select-all" aria-label="Anchor link for: select-all"><i class="fas fa-link"></i></a> 
+</h2>
+<p>Antes de olhar a solução, precisamos entender um <em>combinator</em> específico da
+crate <a href="https://docs.rs/futures/0.3.15/futures/index.html"><code>futures</code></a>, o <a href="https://docs.rs/futures/0.3.15/futures/future/struct.SelectAll.html"><code>SelectAll</code></a>. Esse <em>combinator</em>,
+gerado através da função <a href="https://docs.rs/futures/0.3.15/futures/future/fn.select_all.html"><code>select_all</code></a>, tem a seguinte semântica:
+fazer <em>polling</em> nele significa fazer <em>polling</em> em seus <code>Future</code>s internos, até
+que algum deles retorne. Quando isso acontece, o <code>SelectAll</code> retorna
+<code>Poll::Ready</code> com uma tupla de 3 valores:</p>
+<ol>
+<li>O retorno do <em>polling</em> do <code>Future</code> interno que retornou <code>Poll::Ready</code>;</li>
+<li>O índice em que o <code>Future</code> que retornou <code>Poll::Ready</code> estava no
+<code>IntoIterator</code> que foi passado para a função <code>select_all</code>;</li>
+<li>Um <code>Vec</code> contendo todos os <code>Futures</code> passados para a função <code>select_all</code>,
+exceto aquele que retornou <code>Poll::Ready</code>, sem qualquer garantia de ordenação.</li>
+</ol>
+<p>Por exemplo, digamos que invocamos a função <code>select_all</code> com um vetor com 3
+<code>Future</code>s: <code>A</code>, <code>B</code> e <code>C</code>, nessa ordem. Se chamarmos <code>.await</code> no <code>SelectAll</code>
+resultante, ele vai &quot;bloquear&quot; até que um desses 3 <code>Future</code>s termine (retornando
+<code>Poll::Ready</code>). Se nenhum deles terminar, o <code>.await</code> do <code>SelectAll</code> não retorna
+nunca. Digamos então que <code>B</code> retorna. A tupla de 3 valores resultante tem o
+segunite conteúdo (pseudocódigo):</p>
+<pre style="background-color:#fafafa;">
+<code class="language-rust" data-lang="rust"><span style="color:#a626a4;">let </span><span style="color:#383a42;">(</span><span style="color:#a626a4;">&lt;</span><span style="color:#383a42;">output de B</span><span style="color:#a626a4;">&gt;</span><span style="color:#383a42;">, </span><span style="color:#c18401;">1</span><span style="color:#383a42;">, [A, C] </span><span style="color:#a626a4;">| </span><span style="color:#383a42;">[C, A]) </span><span style="color:#a626a4;">= </span><span style="color:#0184bc;">select_all</span><span style="color:#383a42;">(vec![A, B, C]).await;
+</span></code></pre>
+<p>O segundo elemento é <code>1</code> porque esse <strong>era</strong> o índice de <code>B</code> no vetor passado
+para <code>select_all</code>. O terceiro elemento é um vetor, mas eu escrevi com essa
+notação de <em>pattern matching</em> com disjunção para tentar ilustrar o ponto de que
+a ordem não é garantida. Pode ser tanto [<code>A</code>, <code>C</code>] como [<code>C</code>, <code>A</code>]. Não podemos
+assumir qual a ordem resultante. A solução precisa se moldar a essa
+inconveniência.</p>
+<h2 id="solucao">Solução<a class="zola-anchor" href="#solucao" aria-label="Anchor link for: solucao"><i class="fas fa-link"></i></a> 
+</h2>
+<p>Dadas essas definições, essa é a solução:</p>
+<pre style="background-color:#fafafa;">
+<code class="language-rust" data-lang="rust"><span style="color:#a626a4;">use </span><span style="color:#383a42;">futures::future::select_all;
+</span><span style="color:#a626a4;">use </span><span style="color:#383a42;">std::collections::HashMap;
+</span><span style="color:#a626a4;">use </span><span style="color:#383a42;">std::future::Future;
+</span><span style="color:#a626a4;">use </span><span style="color:#383a42;">std::pin::Pin;
+
+</span><span style="color:#a0a1a7;">// 8
+</span><span style="color:#a626a4;">struct </span><span style="color:#383a42;">Indexed&lt;T&gt; {
+    </span><span style="color:#e45649;">index</span><span style="color:#383a42;">: </span><span style="color:#a626a4;">usize</span><span style="color:#383a42;">,
+    </span><span style="color:#e45649;">inner</span><span style="color:#383a42;">: T,
+}
+
+</span><span style="color:#a0a1a7;">// 9
+</span><span style="color:#a626a4;">impl</span><span style="color:#383a42;">&lt;T&gt; Future </span><span style="color:#a626a4;">for </span><span style="color:#383a42;">Indexed&lt;T&gt;
+</span><span style="color:#a626a4;">where
+</span><span style="color:#383a42;">    T: Future + Unpin,
+{
+    </span><span style="color:#a626a4;">type </span><span style="color:#383a42;">Output </span><span style="color:#a626a4;">= </span><span style="color:#383a42;">T::Output;
+
+    </span><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">poll</span><span style="color:#383a42;">(
+        </span><span style="color:#e45649;">self</span><span style="color:#383a42;">: std::pin::Pin&lt;</span><span style="color:#a626a4;">&amp;mut Self</span><span style="color:#383a42;">&gt;,
+        </span><span style="color:#e45649;">cx</span><span style="color:#383a42;">: </span><span style="color:#a626a4;">&amp;mut </span><span style="color:#383a42;">std::task::Context&lt;&#39;</span><span style="color:#a626a4;">_</span><span style="color:#383a42;">&gt;,
+    ) -&gt; std::task::Poll&lt;</span><span style="color:#a626a4;">Self::</span><span style="color:#383a42;">Output&gt; {
+        Pin::new(</span><span style="color:#a626a4;">&amp;mut </span><span style="color:#e45649;">self</span><span style="color:#383a42;">.</span><span style="color:#0184bc;">get_mut</span><span style="color:#383a42;">().inner).</span><span style="color:#0184bc;">poll</span><span style="color:#383a42;">(cx)
+    }
+}
+
+</span><span style="color:#a0a1a7;">// 1
+</span><span style="color:#a626a4;">pub</span><span style="color:#383a42;"> async </span><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">watch</span><span style="color:#383a42;">&lt;F, T&gt;(</span><span style="color:#e45649;">factories</span><span style="color:#383a42;">: F)
+</span><span style="color:#a626a4;">where </span><span style="color:#a0a1a7;">// 3
+</span><span style="color:#383a42;">    F: IntoIterator,
+    </span><span style="color:#a626a4;">F::</span><span style="color:#383a42;">Item: Fn() -&gt; T,
+
+    T: Future + Unpin,
+{
+    </span><span style="color:#a626a4;">let</span><span style="color:#383a42;"> factories: Vec&lt;</span><span style="color:#a626a4;">F::</span><span style="color:#383a42;">Item&gt; </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> factories.</span><span style="color:#0184bc;">into_iter</span><span style="color:#383a42;">().</span><span style="color:#0184bc;">collect</span><span style="color:#383a42;">();
+
+    </span><span style="color:#a0a1a7;">// 7
+    </span><span style="color:#a626a4;">let mut</span><span style="color:#383a42;"> indexed_tasks: Vec&lt;Indexed&lt;T&gt;&gt; </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> factories
+        .</span><span style="color:#0184bc;">iter</span><span style="color:#383a42;">()
+        .</span><span style="color:#0184bc;">map</span><span style="color:#383a42;">(|</span><span style="color:#e45649;">f</span><span style="color:#383a42;">| </span><span style="color:#0184bc;">f</span><span style="color:#383a42;">())
+        .</span><span style="color:#0184bc;">enumerate</span><span style="color:#383a42;">()
+        .</span><span style="color:#0184bc;">map</span><span style="color:#383a42;">(|(</span><span style="color:#e45649;">index</span><span style="color:#383a42;">, </span><span style="color:#e45649;">inner</span><span style="color:#383a42;">)| Indexed { index, inner })
+        .</span><span style="color:#0184bc;">collect</span><span style="color:#383a42;">();
+
+    </span><span style="color:#a0a1a7;">// 4
+    </span><span style="color:#a626a4;">let mut</span><span style="color:#383a42;"> factory_index: HashMap&lt;</span><span style="color:#a626a4;">usize</span><span style="color:#383a42;">, </span><span style="color:#a626a4;">F::</span><span style="color:#383a42;">Item&gt; </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> factories
+        .</span><span style="color:#0184bc;">into_iter</span><span style="color:#383a42;">()
+        .</span><span style="color:#0184bc;">enumerate</span><span style="color:#383a42;">()
+        .</span><span style="color:#0184bc;">collect</span><span style="color:#383a42;">();
+
+    </span><span style="color:#a626a4;">loop </span><span style="color:#383a42;">{
+        </span><span style="color:#a626a4;">let </span><span style="color:#383a42;">(</span><span style="color:#a626a4;">_ </span><span style="color:#a0a1a7;">/* 14 */</span><span style="color:#383a42;">, stopped_index, other_tasks </span><span style="color:#a0a1a7;">/* 6 */</span><span style="color:#383a42;">)
+            </span><span style="color:#a626a4;">= </span><span style="color:#0184bc;">select_all</span><span style="color:#383a42;">(indexed_tasks).await; </span><span style="color:#a0a1a7;">// 2
+
+        // 10
+        </span><span style="color:#a626a4;">let mut</span><span style="color:#383a42;"> from_to: HashMap&lt;</span><span style="color:#a626a4;">usize</span><span style="color:#383a42;">, </span><span style="color:#a626a4;">usize</span><span style="color:#383a42;">&gt; </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> other_tasks
+            .</span><span style="color:#0184bc;">iter</span><span style="color:#383a42;">()
+            .</span><span style="color:#0184bc;">map</span><span style="color:#383a42;">(|Indexed { </span><span style="color:#e45649;">index</span><span style="color:#383a42;">, .. }</span><span style="color:#a626a4;">|</span><span style="color:#383a42;"> index)
+            .</span><span style="color:#0184bc;">enumerate</span><span style="color:#383a42;">()
+            .</span><span style="color:#0184bc;">map</span><span style="color:#383a42;">(|(</span><span style="color:#e45649;">to</span><span style="color:#383a42;">, </span><span style="color:#e45649;">from</span><span style="color:#383a42;">)| (</span><span style="color:#a626a4;">*</span><span style="color:#383a42;">from, to))
+            .</span><span style="color:#0184bc;">collect</span><span style="color:#383a42;">();
+        from_to.</span><span style="color:#0184bc;">insert</span><span style="color:#383a42;">(stopped_index, other_tasks.</span><span style="color:#0184bc;">len</span><span style="color:#383a42;">());
+
+        </span><span style="color:#a0a1a7;">// 12
+        </span><span style="color:#a626a4;">let mut</span><span style="color:#383a42;"> tasks: Vec&lt;T&gt; </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> other_tasks
+            .</span><span style="color:#0184bc;">into_iter</span><span style="color:#383a42;">()
+            .</span><span style="color:#0184bc;">map</span><span style="color:#383a42;">(|Indexed { </span><span style="color:#e45649;">inner</span><span style="color:#383a42;">, .. }</span><span style="color:#a626a4;">|</span><span style="color:#383a42;"> inner)
+            .</span><span style="color:#0184bc;">collect</span><span style="color:#383a42;">();
+
+        </span><span style="color:#a0a1a7;">// 5
+        </span><span style="color:#a626a4;">let</span><span style="color:#383a42;"> respawned_task </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> factory_index
+            .</span><span style="color:#0184bc;">get</span><span style="color:#383a42;">(</span><span style="color:#a626a4;">&amp;</span><span style="color:#383a42;">stopped_index)
+            .</span><span style="color:#0184bc;">expect</span><span style="color:#383a42;">(</span><span style="color:#50a14f;">&quot;invalid index state&quot;</span><span style="color:#383a42;">)();
+        tasks.</span><span style="color:#0184bc;">push</span><span style="color:#383a42;">(respawned_task);
+
+        </span><span style="color:#a0a1a7;">// 11
+</span><span style="color:#383a42;">        factory_index </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> factory_index
+            .</span><span style="color:#0184bc;">into_iter</span><span style="color:#383a42;">()
+            .</span><span style="color:#0184bc;">map</span><span style="color:#383a42;">(|(</span><span style="color:#e45649;">from</span><span style="color:#383a42;">, </span><span style="color:#e45649;">factory</span><span style="color:#383a42;">)| {
+                </span><span style="color:#a626a4;">let</span><span style="color:#383a42;"> to </span><span style="color:#a626a4;">= *</span><span style="color:#383a42;">from_to.</span><span style="color:#0184bc;">get</span><span style="color:#383a42;">(</span><span style="color:#a626a4;">&amp;</span><span style="color:#383a42;">from).</span><span style="color:#0184bc;">expect</span><span style="color:#383a42;">(</span><span style="color:#50a14f;">&quot;invalid index state&quot;</span><span style="color:#383a42;">);
+                (to, factory)
+            })
+            .</span><span style="color:#0184bc;">collect</span><span style="color:#383a42;">();
+
+        </span><span style="color:#a0a1a7;">// 13
+</span><span style="color:#383a42;">        indexed_tasks </span><span style="color:#a626a4;">=</span><span style="color:#383a42;"> tasks
+            .</span><span style="color:#0184bc;">into_iter</span><span style="color:#383a42;">()
+            .</span><span style="color:#0184bc;">enumerate</span><span style="color:#383a42;">()
+            .</span><span style="color:#0184bc;">map</span><span style="color:#383a42;">(|(</span><span style="color:#e45649;">index</span><span style="color:#383a42;">, </span><span style="color:#e45649;">inner</span><span style="color:#383a42;">)| Indexed { index, inner })
+            .</span><span style="color:#0184bc;">collect</span><span style="color:#383a42;">();
+    }
+}
+</span></code></pre>
+<p><a href="https://github.com/lvbarbosa/watch/blob/master/src/lib.rs">lvbarbosa/watch/src/lib.rs</a></p>
+<p>A função <code>watch</code> [1] coordena o código ao redor da chamada para <code>select_all</code>
+[2]. Seu objetivo é preparar os argumentos para <code>select_all</code> e reagir ao seu
+retorno, como uma espécie de coreografia. Praticamente todo o código de <code>watch</code>
+é moldado ao redor da API de <code>select_all</code>. Por isso, o código não é explicado de
+forma linear, mas de acordo com as necessidades geradas por causa dessa API. Os
+números anotando o código são usados aqui como referência para ajudar na
+navegação.</p>
+<p><code>watch</code> recebe como argumento uma coleção, o tipo genérico <code>F</code>, cujos itens são
+o que chamei de <em>task factory</em>. Uma <em>task factory</em> é uma <em>closure</em> que quando
+invocada retorna uma <em>task</em>, um valor do tipo <code>Future</code>, caracterizada pelo tipo
+genérico <code>T</code>. Tudo isso está descrito pelas restrições na clausula <code>where</code> [3]
+da função.</p>
+<p>Como explicado acima, quando o <code>SelectAll</code> acaba, as únicas informações que
+temos a respeito do <code>Future</code> que retornou são seu <em>output</em> e o índice onde ele
+estava no vetor passado para <code>select_all</code>. <strong>Só isso</strong>. Essa informação por si
+só não é suficiente para saber qual <em>task factory</em> invocar para dar <em>respawn</em>
+naquela <em>task</em> que retornou.</p>
+<p>Por isso, precisamos construir alguma espécie de mapa para o passado, para
+conseguir recuperar a <em>task factory</em> adequada. É para isso que serve o mapa
+<code>factory_index</code> [4]. Com ele, a partir de <code>stopped_index</code>, que é o índice da
+<em>task</em> que retornou, conseguimos recuperar a <em>task factory</em> apropriada e
+executar o <em>respawn</em> [5].</p>
+<p>Antes de completar o <code>loop</code>, precisamos fazer outra coisa. Como falado
+anteriormente, o vetor <code>other_tasks</code> [6] não possui nenhuma garantia de ordem em
+relação ao vetor original <code>indexed_tasks</code> [7] passado para <code>select_all</code> [2]. Por
+isso, as entradas de <code>factory_index</code> não mais funcionam como um link entre as
+<em>tasks</em> em <code>other_tasks</code> [6] e as <em>task factories</em> que as geraram. Esse índice
+precisa ser gerado novamente.</p>
+<p>Para refazer o índice, precisamos de alguma outra forma de ligar as <em>tasks</em> que
+continuam vivas em <code>other_tasks</code> [6] às suas <em>factories</em>. Uma forma de fazer
+isso é anotar essa informação nas próprias <em>tasks</em>. Uma espécie de etiqueta que
+nos permite concluir qual <em>task factory</em> gerou cada task. Para isso,
+introduzimos o tipo <code>Indexed</code> [8]. Ele é apenas um embrulho com uma <em>tag</em>
+numérica chamada <code>index</code>. O objetivo de <code>index</code> é permitir encontrar a <em>task
+factory</em> que gerou aquela <em>task</em>. Implementamos <code>Future</code> para <code>Indexed</code> de forma
+trivial, como um decorator ao redor da <em>task</em> original [9].</p>
+<p>Em [7], quando começamos a rodar todas as <em>tasks</em>, etiquetamos todas elas com a
+posição no vetor <code>indexed_tasks</code> e usamos essa mesma informação de posição para
+montar <code>factory_index</code> em [4]. Assim temos a garantia de sincronia entre as
+posições do vetor e o índice de <em>task factories</em>. Pelo menos por enquanto.</p>
+<p>Criamos o mapa <code>from_to</code> em [10]. Ele serve o propósito de nos informar como
+mapear os índices do agora antigo <code>factory_index</code>. O mapeamento ocorre em [11].
+Destruímos o índice, mapeamos as chaves e o reconstruimos. Nesse momento,
+<code>factory_index</code> está atualizado e está em sincronia com as <em>tasks</em> na nova
+ordem, no novo vetor <code>tasks</code> [12], que nada mais é do que <code>other_tasks</code> [6] mais
+a <code>respawned_task</code> [5].</p>
+<p>Com tudo em sincronia, podemos reindexar as <em>tasks</em> em [13] como fizemos em [7],
+para então repetir o <code>loop</code>.</p>
+<h2 id="epilogo">Epílogo<a class="zola-anchor" href="#epilogo" aria-label="Anchor link for: epilogo"><i class="fas fa-link"></i></a> 
+</h2>
+<p>Com essa função disponível para nossos serviços, podemos criar <em>closures</em> que
+criam <em>consumers</em> e delegar a responsabilidade de mantê-las em execução. <code>watch</code>
+pode ser usada para manter vivos <code>Future</code>s em outros contexos.</p>
+<p>Para lidar com <em>panics</em>, vale a pena dar uma olhada em
+<a href="https://docs.rs/futures/0.3.15/futures/future/struct.CatchUnwind.html"><code>CatchUnwind</code></a>.</p>
+<p>Podemos aplicar restrições ao <em>output</em> das <em>tasks</em> usando a cláusula <code>where</code>
+[3]. Por exemplo, se quisermos imprimir a saída da <em>task</em> que retornou em
+<code>stdout</code>, podemos fazer o seguinte:</p>
+<pre style="background-color:#fafafa;">
+<code class="language-rust" data-lang="rust"><span style="color:#a626a4;">pub</span><span style="color:#383a42;"> async </span><span style="color:#a626a4;">fn </span><span style="color:#0184bc;">watch</span><span style="color:#383a42;">&lt;F, T, O&gt;(</span><span style="color:#e45649;">factories</span><span style="color:#383a42;">: F)
+</span><span style="color:#a626a4;">where
+</span><span style="color:#383a42;">    F: IntoIterator,
+    </span><span style="color:#a626a4;">F::</span><span style="color:#383a42;">Item: Fn() -&gt; T,
+
+    T: Future&lt;Output = O&gt; + Unpin,
+    O: std::fmt::Display,
+{
+
+</span></code></pre>
+<p>Assim, o valor ignorado em [14] pode ser utilizado.</p>
+<p>Para seguir o mesmo espírito da API da biblioteca <code>futures</code>, a função <code>watch</code>
+poderia voltar um tipo <code>Watch</code> que implementa <code>Future</code>. Não tentei fazer isso
+ainda, mas imagino que não dê muito trabalho. </p>
+<p>Uma extensão ainda mais curiosa pode ser olhar a implementação de <code>SelectAll</code> e
+ver se é possível implementar a semântica de <em>respawn</em> sem precisar de toda essa
+burocracia de indexação.</p>
+
+    </section>
+    <footer>
+        <nav class="c-pagination p-pagination">
+            <div class="c-pagination__ctrl">
+                <div class="c-pagination__newer">
+                    
+                </div>
+                <div class="c-pagination__older">
+                    <a href="https:&#x2F;&#x2F;lvbarbosa.github.io&#x2F;perspectiva-e-foco&#x2F;">Transformações de Perspectiva e Foco</a>
+                </div>
+            </div>
+        </nav>
+    </footer>
+</article>
+        </main>
+
+     
+      <footer class="l-footer">
+          <p class="p-copyright">
+              
+              Copyright Lucas Barbosa 2021
+          </p>
+      </footer>
+
+       
+      
+    </body>
+</html>
+            
